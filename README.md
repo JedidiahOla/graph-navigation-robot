@@ -1,6 +1,6 @@
 # Graph Navigation Robot
 
-[![ci](https://github.com/YOUR_USERNAME/graph-navigation-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/graph-navigation-robot/actions/workflows/ci.yml)
+[![ci](https://github.com/YOUR_USERNAME/graph-navigation-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/JedidiahOla/graph-navigation-robot/actions/workflows/ci.yml)
 
 An autonomous robot that models the track it is driving on as a graph, and uses
 that graph to reach junctions requested by a server over WiFi.
