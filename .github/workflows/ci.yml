@@ -1,0 +1,102 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: unit tests (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake -S test -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  static-analysis:
+    name: cppcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      # The Energia-dependent modules are excluded: without the board package
+      # headers cppcheck reports missing includes rather than real defects.
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning,performance,portability \
+                   --error-exitcode=1 \
+                   --inline-suppr \
+                   --suppress=missingIncludeSystem \
+                   firmware/line_follower/line_policy.cpp \
+                   firmware/line_follower/route.cpp
+
+  formatting:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned so the check is reproducible: clang-format's default line
+      # breaking changes between major versions, and an unpinned check goes red
+      # when the runner image updates rather than when the code changes.
+      - name: Install clang-format
+        run: pip install clang-format==22.1.8
+
+      - name: Check formatting
+        run: |
+          find firmware test \
+            \( -name '*.cpp' -o -name '*.h' -o -name '*.ino' \) -print0 \
+            | xargs -0 clang-format --dry-run --Werror
+
+  compile-firmware:
+    name: compile firmware (MSP432P401R)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # secrets.h is gitignored, so the build needs the template in its place.
+      - name: Provide placeholder secrets.h
+        run: |
+          cp firmware/line_follower/secrets.h.example \
+             firmware/line_follower/secrets.h
+
+      # Energia is unmaintained and its download host is offline. The board
+      # package is mirrored by Andy4495/TI_Platform_Cores_For_Arduino, which is
+      # what makes this job possible at all.
+      - name: Compile sketch
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: energia:msp432:MSP-EXP432P401R
+          platforms: |
+            - source-url: https://raw.githubusercontent.com/Andy4495/TI_Platform_Cores_For_Arduino/main/json/package_energia_minimal_msp432_index.json
+              name: energia:msp432
+          sketch-paths: |
+            - firmware/line_follower
+          enable-warnings-report: true
