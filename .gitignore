@@ -1,0 +1,18 @@
+# Credentials. Copy secrets.h.example to secrets.h and fill it in.
+firmware/line_follower/secrets.h
+
+# Host test build output
+build/
+*.o
+*.a
+
+# Energia / Arduino build output
+*.elf
+*.hex
+*.bin
+*.map
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
